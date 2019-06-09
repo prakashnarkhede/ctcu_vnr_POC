@@ -18,14 +18,18 @@
 package com.hsbc;
 
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.Min;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.transforms.WithTimestamps;
@@ -35,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import io.netty.handler.codec.http.multipart.MemoryAttribute;
 
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.joda.time.Instant;
 
 /**
@@ -57,29 +62,31 @@ public class StarterPipeline {
   private static final Logger LOG = LoggerFactory.getLogger(StarterPipeline.class);
   public static void main(String[] args) throws Exception {
 	  
+	 //check about 	  --numWorkers  --> to set number of workers
+	  Pipeline pipeline = Pipeline.create(
+		        PipelineOptionsFactory.fromArgs(args).withValidation().create()); 
+	 
+	  //read text file in pipeline object
+	  PCollection<String> fileData = pipeline.apply("Read input text file", TextIO.read().from("gs://ctct_vnr_bucket/*.txt"));
 	  
-	  processingLogic c = new processingLogic();
-      c.verifyIfJoTRisValid("String data");
-
-      
-      
-    Pipeline p = Pipeline.create(
-        PipelineOptionsFactory.fromArgs(args).withValidation().create());
-
-  PCollection<String> fileData = p.apply("Read input text file", TextIO.read().from("gs://ctct_vnr_bucket/Batch_Input_File.txt"));
+	  //create process request function --> actual processing happens here
+	  class ProcessRequest extends DoFn<String, String> {
+	    @DoFn.ProcessElement
+	    public void processElement(ProcessContext processContext) throws SQLException, Exception {
+	    	processingLogic c = new processingLogic();
+	    	System.out.println(c.jotrValidation(processContext.element()));
+	    	processContext.output(c.jotrValidation(processContext.element()).toString());
+	    }
+	  }
+	 
+	  PCollection<String> numbersFromChars = fileData.apply(
+	    ParDo.of(new ProcessRequest()));
 	  
-  PCollection<String> pp = fileData.apply(
-		  "Convert to upper case",                     // the transform name
-		  ParDo.of(new DoFn<String, String>() {    // a DoFn as an anonymous inner class instance
-		      @ProcessElement
-		      public void processElement(@Element String word, OutputReceiver<String> out) throws SQLException {
-		        word.toUpperCase();
-		        System.out.println(word.toUpperCase());
-		      }
-		    }));
-  pp.apply("WriteMyFile", TextIO.write().to("outputData.txt").withFooter("foot").withHeader("head").withSuffix(".txt"));
+	  //write to output file
+	  numbersFromChars.apply("WriteMyFile", TextIO.write().withoutSharding().to("Batch_Output_File").withSuffix(".txt"));
 
-  
-    p.run().waitUntilFinish();
+	  //run pipeline
+	  pipeline.run().waitUntilFinish();
+
   }
 }
