@@ -106,5 +106,12 @@
     <version>1.0.13</version>
 </dependency>
 
+<!-- below dependency is to work with files (file delete) -->
+<dependency>
+    <groupId>com.google.cloud</groupId>
+    <artifactId>google-cloud-storage</artifactId>
+    <version>1.77.0</version>
+</dependency>
+
   </dependencies>
 </project>

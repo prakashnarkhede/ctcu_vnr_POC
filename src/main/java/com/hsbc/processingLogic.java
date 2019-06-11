@@ -1,5 +1,8 @@
 package com.hsbc;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -8,6 +11,31 @@ import java.sql.Statement;
 
 import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
 
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.BlobId;
+
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.BucketInfo;
+import com.google.cloud.storage.CopyWriter;
+import com.google.cloud.storage.HttpMethod;
+import com.google.cloud.storage.Storage.BlobGetOption;
+import com.google.cloud.storage.Storage.BlobListOption;
+import com.google.cloud.storage.Storage.BlobSourceOption;
+import com.google.cloud.storage.Storage.BlobTargetOption;
+import com.google.cloud.storage.Storage.BucketField;
+import com.google.cloud.storage.Storage.BucketGetOption;
+import com.google.cloud.storage.Storage.BucketListOption;
+import com.google.cloud.storage.Storage.BucketSourceOption;
+import com.google.cloud.storage.Storage.ComposeRequest;
+import com.google.cloud.storage.Storage.CopyRequest;
+import com.google.cloud.storage.Storage.SignUrlOption;
+import com.google.cloud.storage.StorageBatch;
+import com.google.cloud.storage.StorageBatchResult;
+import com.google.cloud.storage.StorageClass;
+import com.google.cloud.storage.StorageException;
+import com.google.cloud.storage.StorageOptions;
 public class processingLogic {
 	
 	String JoTR1 = "";
@@ -47,6 +75,9 @@ public class processingLogic {
 
 		StringBuilder respData = new StringBuilder(record);
 		
+		//delete file from google storage
+		//bucket name--> ctct_vnr_bucket       blobName (Item to delete) --> Consumer1/Batch_Input_File_C1.txt
+		
 		if(record.startsWith("A")) {			//header processing
 		}
 		
@@ -57,10 +88,6 @@ public class processingLogic {
 			JoTR4 = record.substring(305, 308);
 			JoTR5 = record.substring(351, 354);
 			System.out.println(JoTR1);
-			System.out.println(JoTR2);
-			System.out.println(JoTR3);
-			System.out.println(JoTR4);
-			System.out.println(JoTR5);
 
 			if(JoTR1 != "    ") {
 				if(!c.getCountryCodeValue(JoTR1)) {
@@ -92,16 +119,22 @@ public class processingLogic {
 			} else {
 				JoTR3_warning = "V201";
 				respData.replace(264, 267, JoTR3_warning);
-			}
-
-			
+			}			
 		}
-		if(record.startsWith("Z")) {
-			
+		if(record.startsWith("Z")) {			
 		}
-		return respData;	
-		
-
+		return respData;			
+	}
+	
+	
+	//Delete file from google cloud bucket
+	public void DeleteFileFromGCS() {
+		try{
+			Storage storage = StorageOptions.getDefaultInstance().getService();			
+			BlobId blobId = BlobId.of("ctct_vnr_bucket", "Consumer1/Batch_Input_File_C1.txt");
+	    	boolean deleted = storage.delete(blobId);
+	    	System.out.println(deleted);
+		} catch(Exception e) {}
 	}
 
 }
